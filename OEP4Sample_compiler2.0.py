@@ -78,6 +78,15 @@ def Main(operation, args):
         owner = args[0]
         spender = args[1]
         return allowance(owner,spender)
+    if operation == "mint":
+        assert (len(args) == 2)
+        toAcct = args[0]
+        amount = args[1]
+        return mint(toAcct, amount)
+    if operation == "burn":
+        assert (len(args) == 1)
+        amount = args[0]
+        return burn(amount)
     return False
 
 def init():
@@ -268,3 +277,41 @@ def allowance(owner,spender):
     """
     key = concat(concat(APPROVE_PREFIX,owner),spender)
     return Get(ctx,key)
+
+def mint(toAcct, amount):
+    """
+    only the owner can mint the token
+    :param toAcct:
+    :param amount:
+    :return:
+    """
+    assert (CheckWitness(OWNER))
+    assert (len(toAcct) == 20)
+    assert (amount > 0)
+    total = totalSupply()
+    newTotal = total + amount
+    assert (newTotal > total)
+    # update total supply
+    Put(ctx, SUPPLY_KEY, newTotal)
+    # update the toAcct balance
+    Put(ctx, concat(BALANCE_PREFIX, toAcct), balanceOf(toAcct) + amount)
+    TransferEvent("", toAcct, amount)
+    return True
+
+def burn(amount):
+    """
+    :param burnAcct:
+    :param amount:
+    :return:
+    """
+    assert (CheckWitness(OWNER))
+    assert (amount > 0)
+    ownerBalance = balanceOf(OWNER)
+    assert (ownerBalance >= amount)
+    newTotal = totalSupply() - amount
+    # update total supply
+    Put(ctx, SUPPLY_KEY, newTotal)
+    # update the owner's balance
+    Put(ctx, concat(BALANCE_PREFIX, OWNER), ownerBalance - amount)
+    TransferEvent(OWNER, "", amount)
+    return True
